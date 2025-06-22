@@ -46,6 +46,8 @@ void initVulkan(VKRT* vkrt) {
     createRenderPass(vkrt);
     createFramebuffers(vkrt);
     createCommandPool(vkrt);
+    loadObject(vkrt, "assets/sphere.glb");
+    createBottomLevelAccelerationStructure(vkrt);
     loadObject(vkrt, "assets/dragon.glb");
     createBottomLevelAccelerationStructure(vkrt);
     createTopLevelAccelerationStructure(vkrt);
@@ -74,9 +76,12 @@ void deinit(VKRT* vkrt) {
     vkFreeMemory(vkrt->device, vkrt->shaderBindingTableMemory, NULL);
 
     PFN_vkDestroyAccelerationStructureKHR vkDestroyAS = (PFN_vkDestroyAccelerationStructureKHR)vkGetDeviceProcAddr(vkrt->device, "vkDestroyAccelerationStructureKHR");
-    vkDestroyAS(vkrt->device, vkrt->bottomLevelAccelerationStructure, NULL);
-    vkDestroyBuffer(vkrt->device, vkrt->bottomLevelAccelerationStructureBuffer, NULL);
-    vkFreeMemory(vkrt->device, vkrt->bottomLevelAccelerationStructureMemory, NULL);
+
+    for (uint32_t i = 0; i < vkrt->bottomLevelAccelerationStructureCount; i++) {
+        vkDestroyAS(vkrt->device, vkrt->bottomLevelAccelerationStructure[i], NULL);
+        vkDestroyBuffer(vkrt->device, vkrt->bottomLevelAccelerationStructureBuffer[i], NULL);
+        vkFreeMemory(vkrt->device, vkrt->bottomLevelAccelerationStructureMemory[i], NULL);
+    }
 
     vkDestroyAS(vkrt->device, vkrt->topLevelAccelerationStructure, NULL);
     vkDestroyBuffer(vkrt->device, vkrt->topLevelAccelerationStructureBuffer, NULL);

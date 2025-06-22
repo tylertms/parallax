@@ -67,10 +67,11 @@ typedef struct VKRT {
     VkDeviceMemory topLevelAccelerationStructureMemory;
     VkBuffer topLevelAccelerationStructureBuffer;
     VkDeviceAddress topLevelAccelerationStructureDeviceAddress;
-    VkAccelerationStructureKHR bottomLevelAccelerationStructure;
-    VkDeviceMemory bottomLevelAccelerationStructureMemory;
-    VkBuffer bottomLevelAccelerationStructureBuffer;
-    VkDeviceAddress bottomLevelAccelerationStructureDeviceAddress;
+    VkAccelerationStructureKHR* bottomLevelAccelerationStructure;
+    VkDeviceMemory* bottomLevelAccelerationStructureMemory;
+    VkBuffer* bottomLevelAccelerationStructureBuffer;
+    VkDeviceAddress* bottomLevelAccelerationStructureDeviceAddress;
+    uint32_t bottomLevelAccelerationStructureCount;
     VkBuffer vertexBuffer;
     VkDeviceMemory vertexBufferMemory;
     VkDeviceAddress vertexBufferDeviceAddress;
