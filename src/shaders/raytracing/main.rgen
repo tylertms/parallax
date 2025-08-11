@@ -1,0 +1,87 @@
+#version 460
+#extension GL_EXT_ray_tracing : require
+#extension GL_GOOGLE_include_directive : require
+
+#include "../utility/random.glsl"
+#include "../utility/payload.glsl"
+
+layout(set = 0, binding = 0) uniform accelerationStructureEXT topLevelAS;
+layout(set = 0, binding = 1, rgba32f) uniform image2D image;
+
+layout(set = 0, binding = 4) uniform SceneUniform {
+    mat4 viewInverse;
+    mat4 projInverse;
+    uint frameNumber;
+    uint totalSamples;
+    uint samplesPerPixel;
+    uint maxRayDepth;
+} scene;
+
+layout(set = 0, binding = 6, std430) readonly buffer MaterialBuffer {
+    Material materials[];
+} materialBuffer;
+
+layout(location = 0) rayPayloadEXT HitData hit;
+
+const float EPSILON = 1e-5;
+
+vec3 traceRay(Ray ray, inout uint state) {
+    vec3 rayColor = vec3(1);
+    vec3 rayLight = vec3(0);
+    for (int depth = 0; depth < scene.maxRayDepth; depth++) {
+        traceRayEXT(topLevelAS, gl_RayFlagsOpaqueEXT, 0xFF, 0, 0, 0, ray.origin, EPSILON, ray.direction, 1e5, 0);
+        if (!hit.didHit) break;
+        ray.origin = hit.position + hit.normal * EPSILON;
+        ray.direction = normalize(hit.normal + randDir(state));
+        Material material = materialBuffer.materials[hit.materialIndex];
+        vec3 emittedLight = material.emissiveColor * material.emissiveIntensity;
+        rayLight += emittedLight * rayColor;
+        rayColor *= material.color;
+        if (rayColor.x < EPSILON && rayColor.y < EPSILON && rayColor.z < EPSILON) break;
+    }
+    return rayLight;
+}
+
+void main() {
+    ivec2 pix = ivec2(gl_LaunchIDEXT.xy);
+    uint samplesPerPixel = scene.samplesPerPixel;
+    if (samplesPerPixel == 0u) return;
+
+    uint newSampleCount = scene.totalSamples;
+    uint baseSampleIndex = (newSampleCount >= samplesPerPixel) ? (newSampleCount - samplesPerPixel) : 0u;
+
+    uint pixelIndex = gl_LaunchIDEXT.y * gl_LaunchSizeEXT.x + gl_LaunchIDEXT.x;
+    vec2 invLaunchSize = 1.0 / vec2(gl_LaunchSizeEXT.xy);
+    vec3 camPos = (scene.viewInverse * vec4(0.0, 0.0, 0.0, 1.0)).xyz;
+
+    vec3 newColor = vec3(0.0);
+
+    for (uint i = 0u; i < samplesPerPixel; i++) {
+        uint globalSampleIndex = baseSampleIndex + i;
+        uint state = hash32(pixelIndex * 747796405u + globalSampleIndex * 2891336453u + scene.frameNumber * 277803737u + 704602925u);
+
+        vec2 jitter = vec2(rand(state), rand(state));
+        vec2 inUV = (vec2(gl_LaunchIDEXT.xy) + jitter) * invLaunchSize;
+        vec2 d = inUV * 2.0 - 1.0;
+        vec4 viewPos = scene.projInverse * vec4(d.x, d.y, 1.0, 1.0);
+
+        vec3 dirView = normalize(viewPos.xyz / viewPos.w);
+        vec3 dirWorld = normalize((scene.viewInverse * vec4(dirView, 0.0)).xyz);
+
+        Ray ray;
+        ray.origin = camPos;
+        ray.direction = dirWorld;
+
+        newColor += traceRay(ray, state);
+    }
+
+    newColor /= float(samplesPerPixel);
+
+    float weight = (newSampleCount > 0u) ? float(samplesPerPixel) / float(newSampleCount) : 1.0;
+    
+    vec3 oldColor = imageLoad(image, pix).xyz;
+    vec3 accumulated = mix(oldColor, newColor, weight);
+
+    imageStore(image, pix, vec4(accumulated, 0.0));
+}
+
