@@ -4,9 +4,7 @@ project(
     default_options: ['c_std=c11', 'warning_level=2'],
 )
 
-vkrt_sp = subproject('vkrt', default_options: ['build_examples=false'])
-vkrt_dep = vkrt_sp.get_variable('vkrt_dep')
-
+vkrt_dep = dependency('vkrt')
 glslc = find_program('glslc')
 
 shader_inputs = [
@@ -28,8 +26,6 @@ foreach shader_in : shader_inputs
     shader_targets += shader_target
 endforeach
 
-c_args = ['-D_GNU_SOURCE']
-
 sources = [
     'src/main.c',
     'src/interface.c',
@@ -38,7 +34,6 @@ sources = [
 executable(
     'parallax',
     sources,
-    c_args: c_args,
     dependencies: [vkrt_dep],
     link_language: 'cpp'
 )

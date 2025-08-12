@@ -8,13 +8,13 @@
 int main(void) {
     VKRT parallax = {0};
 
+    VKRT_registerGUI(&parallax, initGUI, deinitGUI, drawGUI);
+
     if (VKRT_init(&parallax) != VK_SUCCESS) {
         fprintf(stderr, "ERROR: Failed to initialize VKRT object\n");
         VKRT_deinit(&parallax);
         return EXIT_FAILURE;
     }
-
-    VKRT_registerGUI(&parallax, initGUI, deinitGUI, drawGUI);
 
     VKRT_addMesh(&parallax, "../vkrt/assets/models/sphere.glb");
     VKRT_addMesh(&parallax, "../vkrt/assets/models/dragon.glb");
